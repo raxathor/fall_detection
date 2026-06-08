@@ -151,25 +151,6 @@ body::before {
 }
 @keyframes alertPulse { from{opacity:1} to{opacity:.6} }
 
-/* ── Gait banner ─────────────────────────────────────────────────────────────*/
-.gait-banner {
-  margin: 10px 16px 0;
-  border-radius: 10px;
-  padding: 12px 16px;
-  display: flex; justify-content: space-between; align-items: center;
-  border: 1px solid rgba(0,255,136,.15);
-  background: rgba(0,255,136,.04);
-  transition: all .4s;
-}
-.gait-banner.caution  { border-color: rgba(255,140,0,.25);  background: rgba(255,140,0,.05); }
-.gait-banner.highrisk { border-color: rgba(255,140,0,.4);   background: rgba(255,140,0,.08); animation: alertPulse .8s ease-in-out infinite alternate; }
-.gait-lbl  { font-family: var(--mono); font-size: 10px; letter-spacing: .25em; color: var(--muted); margin-bottom: 3px; }
-.gait-val  { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--green); }
-.gait-val.caution  { color: var(--orange); }
-.gait-val.highrisk { color: var(--orange); }
-.gait-right{ text-align: right; }
-.gait-sub  { font-family: var(--mono); font-size: 11px; color: var(--muted); }
-
 /* ── Section label ───────────────────────────────────────────────────────────*/
 .sec-lbl {
   font-family: var(--mono); font-size: 10px;
@@ -200,21 +181,6 @@ body::before {
 .rlbl { font-family: var(--mono); font-size: 11px; color: var(--muted); }
 .rval { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--text); }
 .rval.total { color: var(--accent); font-size: 15px; }
-
-/* ── Gait metrics card ───────────────────────────────────────────────────────*/
-.gait-card {
-  margin: 0 16px;
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 14px 14px;
-}
-.gm-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--border); }
-.gm-row:last-child { border-bottom: none; }
-.gm-lbl { font-family: var(--mono); font-size: 11px; color: var(--muted); }
-.gm-val { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--text); }
-.gm-val.warn { color: var(--yellow); }
-.gm-val.risk { color: var(--orange); }
 
 /* ── Chart ───────────────────────────────────────────────────────────────────*/
 .chart-wrap {
@@ -363,18 +329,6 @@ canvas { display: block; width: 100% !important; height: 110px !important; }
   <!-- Fall state banner -->
   <div class="state-banner s0" id="stateBanner">STATE: IDLE</div>
 
-  <!-- Gait banner -->
-  <div class="gait-banner" id="gaitBanner">
-    <div>
-      <div class="gait-lbl">GAIT STATUS</div>
-      <div class="gait-val" id="gaitVal">STABLE</div>
-    </div>
-    <div class="gait-right">
-      <div class="gait-sub" id="gaitScore">Score: 0</div>
-      <div class="gait-sub" id="gaitSteps">Steps: —</div>
-    </div>
-  </div>
-
   <!-- Status + SMS strips -->
   <div class="status-strip"><span id="statusLog">Waiting for connection...</span></div>
   <div class="sms-strip" id="smsStrip"><span id="smsText">SMS idle</span></div>
@@ -399,15 +353,6 @@ canvas { display: block; width: 100% !important; height: 110px !important; }
     </div>
   </div>
 
-  <!-- Gait metrics -->
-  <div class="sec-lbl">GAIT METRICS — updated every 1s</div>
-  <div class="gait-card">
-    <div class="gm-row"><span class="gm-lbl">Cadence (steps/min)</span>   <span class="gm-val" id="gCadence">—</span></div>
-    <div class="gm-row"><span class="gm-lbl">Step variability (CoV %)</span><span class="gm-val" id="gCov">—</span></div>
-    <div class="gm-row"><span class="gm-lbl">Trunk sway RMS (m/s²)</span> <span class="gm-val" id="gSway">—</span></div>
-    <div class="gm-row"><span class="gm-lbl">Mediolateral sway (m/s²)</span><span class="gm-val" id="gMl">—</span></div>
-  </div>
-
   <!-- Chart -->
   <div class="sec-lbl">ACCELERATION MAGNITUDE — live</div>
   <div class="chart-wrap">
@@ -424,13 +369,6 @@ canvas { display: block; width: 100% !important; height: 110px !important; }
     <div class="tr"><label>Gyro confirm (rad/s)</label>    <input type="range" id="t_gy"  min="0.5" max="5"    step="0.1" value="2.0"  oninput="tv('v_gy',this.value)">  <span class="tv" id="v_gy">2.0</span></div>
     <div class="tr"><label>Gravity shift min (m/s²)</label><input type="range" id="t_gs"  min="1"   max="9"    step="0.1" value="6.0"  oninput="tv('v_gs',this.value)">  <span class="tv" id="v_gs">6.0</span></div>
     <div class="tr"><label>Post-fall window (ms)</label>   <input type="range" id="t_pf"  min="500" max="5000" step="100" value="2000" oninput="tv('v_pf',this.value)">  <span class="tv" id="v_pf">2000</span></div>
-
-    <div class="thresh-section" style="margin-top:18px;">GAIT PREVENTION</div>
-    <div class="tr"><label>Cadence caution (steps/min)</label>   <input type="range" id="t_cc" min="50" max="110" step="1"   value="85"  oninput="tv('v_cc',this.value)"> <span class="tv" id="v_cc">85</span></div>
-    <div class="tr"><label>Cadence high risk (steps/min)</label>  <input type="range" id="t_cr" min="40" max="90"  step="1"   value="70"  oninput="tv('v_cr',this.value)"> <span class="tv" id="v_cr">70</span></div>
-    <div class="tr"><label>Sway RMS caution (m/s²)</label>       <input type="range" id="t_sc" min="2"  max="8"   step="0.1" value="4.4" oninput="tv('v_sc',this.value)"> <span class="tv" id="v_sc">4.4</span></div>
-    <div class="tr"><label>ML sway caution (m/s²)</label>        <input type="range" id="t_mc" min="1"  max="5"   step="0.1" value="2.0" oninput="tv('v_mc',this.value)"> <span class="tv" id="v_mc">2.0</span></div>
-
     <button class="apply-btn" id="applyBtn" onclick="applyThresholds()">APPLY TO DEVICE</button>
   </div>
 
@@ -451,7 +389,7 @@ canvas { display: block; width: 100% !important; height: 110px !important; }
   </div>
 
   <div class="footer">
-    Uptime: <span id="uptime">—</span> ms &nbsp;·&nbsp; EMSSARA fall_detection v4.0 &nbsp;·&nbsp; BLE
+    Uptime: <span id="uptime">—</span> ms &nbsp;·&nbsp; EMSSARA fall_detection v5.0 &nbsp;·&nbsp; BLE
   </div>
 
 </div><!-- /page -->
@@ -641,52 +579,6 @@ function handlePacket(raw){
     updateStateBanner(d.state);
   }
 
-  // ── Gait packet (every 5s) ────────────────────────────────────────────────
-  if(d.type === 'gait'){
-    const riskLabels  = ['STABLE', 'CAUTION ⚡', 'HIGH RISK ⚠'];
-    const riskClasses = ['',       'caution',     'highrisk'];
-    const r = d.risk;
-
-    const gv = el('gaitVal');
-    gv.textContent = riskLabels[r];
-    gv.className   = 'gait-val ' + riskClasses[r];
-
-    const gb = el('gaitBanner');
-    gb.className = 'gait-banner ' + riskClasses[r];
-
-    el('gaitScore').textContent = 'Score: ' + d.score;
-    el('gaitSteps').textContent = 'Steps: ' + (d.steps > 0 ? d.steps : '—');
-
-    // Cadence — always update, show — when no steps detected
-    const cadEl = el('gCadence');
-    if(d.cadence > 0){
-      cadEl.textContent = d.cadence.toFixed(1);
-      cadEl.className   = 'gm-val' + (d.cadence < 70 ? ' risk' : d.cadence < 85 ? ' warn' : '');
-    } else {
-      cadEl.textContent = '—';
-      cadEl.className   = 'gm-val';
-    }
-
-    // CoV — always update, show — when no steps detected
-    const covEl = el('gCov');
-    if(d.cadence > 0 && d.cov >= 0){
-      covEl.textContent = d.cov.toFixed(1);
-      covEl.className   = 'gm-val' + (d.cov >= 10 ? ' risk' : d.cov >= 5 ? ' warn' : '');
-    } else {
-      covEl.textContent = '—';
-      covEl.className   = 'gm-val';
-    }
-
-    // Sway metrics — always update every packet
-    const setGM = (id, val, warn, risk) => {
-      const e = el(id);
-      e.textContent = val.toFixed(1);
-      e.className   = 'gm-val' + (val >= risk ? ' risk' : val >= warn ? ' warn' : '');
-    };
-    setGM('gSway', d.sway,   4.4, 5.9);
-    setGM('gMl',   d.mlsway, 2.0, 3.0);
-  }
-
   // ── Fall event ────────────────────────────────────────────────────────────
   if(d.type === 'fall'){
     const entry = {
@@ -715,10 +607,6 @@ function handlePacket(raw){
     set('t_gy',  'v_gy',  d.gy);
     set('t_gs',  'v_gs',  d.gs);
     set('t_pf',  'v_pf',  d.pf);
-    set('t_cc',  'v_cc',  d.cc);
-    set('t_cr',  'v_cr',  d.cr);
-    set('t_sc',  'v_sc',  d.sc);
-    set('t_mc',  'v_mc',  d.mc);
     drawChart();
   }
 }
@@ -815,11 +703,7 @@ function applyThresholds(){
     imp: parseFloat(el('t_imp').value),
     gy:  parseFloat(el('t_gy').value),
     gs:  parseFloat(el('t_gs').value),
-    pf:  parseInt(el('t_pf').value),
-    cc:  parseFloat(el('t_cc').value),
-    cr:  parseFloat(el('t_cr').value),
-    sc:  parseFloat(el('t_sc').value),
-    mc:  parseFloat(el('t_mc').value)
+    pf:  parseInt(el('t_pf').value)
   });
   const btn = el('applyBtn');
   btn.textContent = 'APPLIED ✓';
