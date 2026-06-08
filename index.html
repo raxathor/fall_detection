@@ -461,7 +461,7 @@ canvas { display: block; width: 100% !important; height: 110px !important; }
 //  CONFIG — update these
 // ═══════════════════════════════════════════════════════════════════════════════
 const WORKER_URL = 'https://emssara-sms.fawazyahya12.workers.dev';
-const ALERT_TO   = '+61481875643';  // SMS recipient
+const ALERT_TO   = '+61481875643';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  BLE UUIDs — must match firmware exactly
@@ -657,21 +657,34 @@ function handlePacket(raw){
     el('gaitScore').textContent = 'Score: ' + d.score;
     el('gaitSteps').textContent = 'Steps: ' + (d.steps > 0 ? d.steps : '—');
 
-    // Cadence — lower is worse
+    // Cadence — always update, show — when no steps detected
     const cadEl = el('gCadence');
     if(d.cadence > 0){
       cadEl.textContent = d.cadence.toFixed(1);
       cadEl.className   = 'gm-val' + (d.cadence < 70 ? ' risk' : d.cadence < 85 ? ' warn' : '');
+    } else {
+      cadEl.textContent = '—';
+      cadEl.className   = 'gm-val';
     }
-    // CoV — higher is worse
+
+    // CoV — always update, show — when no steps detected
+    const covEl = el('gCov');
+    if(d.cadence > 0 && d.cov >= 0){
+      covEl.textContent = d.cov.toFixed(1);
+      covEl.className   = 'gm-val' + (d.cov >= 10 ? ' risk' : d.cov >= 5 ? ' warn' : '');
+    } else {
+      covEl.textContent = '—';
+      covEl.className   = 'gm-val';
+    }
+
+    // Sway metrics — always update every packet
     const setGM = (id, val, warn, risk) => {
       const e = el(id);
       e.textContent = val.toFixed(1);
       e.className   = 'gm-val' + (val >= risk ? ' risk' : val >= warn ? ' warn' : '');
     };
-    if(d.cov    >= 0) setGM('gCov',   d.cov,    5,   10);
-    if(d.sway   >= 0) setGM('gSway',  d.sway,   4.4, 5.9);
-    if(d.mlsway >= 0) setGM('gMl',    d.mlsway, 2.0, 3.0);
+    setGM('gSway', d.sway,   4.4, 5.9);
+    setGM('gMl',   d.mlsway, 2.0, 3.0);
   }
 
   // ── Fall event ────────────────────────────────────────────────────────────
