@@ -584,20 +584,13 @@ async function sendFallSMS(fallData){
     const { lat, lng, acc } = await getCoords();
     smsLog('sending', `Sending SMS... (±${acc}m)`);
 
-    const now   = new Date();
-    const ts    = now.toLocaleDateString('en-AU') + ' ' + now.toLocaleTimeString('en-AU');
-    const mapsUrl = `https://maps.google.com/?q=${lat.toFixed(6)},${lng.toFixed(6)}`;
+    const now = new Date();
+    const ts  = now.toLocaleDateString('en-AU') + ' ' + now.toLocaleTimeString('en-AU');
 
     const body =
-      `🚨 EMSSARA FALL DETECTED\n` +
-      `Time: ${ts}\n` +
-      `Orientation: ${fallData.orientation || 'Unknown'}\n` +
-      `Free-fall min: ${fallData.ffMin ?? '—'} m/s²\n` +
-      `Impact max:    ${fallData.impMax ?? '—'} m/s²\n` +
-      `Gyro max:      ${fallData.gyroMax ?? '—'} rad/s\n` +
-      `Gravity shift: ${fallData.gshift ?? '—'} m/s²\n` +
-      `Location: ${lat.toFixed(6)}, ${lng.toFixed(6)} (±${acc}m)\n` +
-      `Map: ${mapsUrl}`;
+      `FALL ALERT ${ts} - ${fallData.orientation || 'Unknown'} - ` +
+      `Impact:${fallData.impMax ?? '-'} Gyro:${fallData.gyroMax ?? '-'} - ` +
+      `maps.google.com/?q=${lat.toFixed(4)},${lng.toFixed(4)}`;
 
     const res = await fetch(WORKER_URL, {
       method: 'POST',
