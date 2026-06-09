@@ -151,6 +151,17 @@ body::before {
 }
 @keyframes alertPulse { from{opacity:1} to{opacity:.6} }
 
+/* ── Near-fall strip ─────────────────────────────────────────────────────────*/
+.nearfall-strip {
+  margin: 8px 16px 0;
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--mono); font-size: 11px; color: var(--muted);
+  transition: color .3s;
+}
+.nearfall-strip.warning { color: var(--orange); }
+.nearfall-strip.alert   { color: var(--red); }
+.nearfall-icon { font-size: 13px; }
+
 /* ── Section label ───────────────────────────────────────────────────────────*/
 .sec-lbl {
   font-family: var(--mono); font-size: 10px;
@@ -192,6 +203,22 @@ body::before {
 }
 .chart-title { font-family: var(--mono); font-size: 10px; letter-spacing: .25em; color: var(--muted); margin-bottom: 8px; }
 canvas { display: block; width: 100% !important; height: 110px !important; }
+
+/* ── Gait metrics card ───────────────────────────────────────────────────────*/
+.gait-card {
+  margin: 0 16px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.gm-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+.gm-lbl { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.gm-val { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--text); }
 
 /* ── Thresholds ──────────────────────────────────────────────────────────────*/
 .thresh-wrap {
@@ -329,6 +356,12 @@ canvas { display: block; width: 100% !important; height: 110px !important; }
   <!-- Fall state banner -->
   <div class="state-banner s0" id="stateBanner">STATE: IDLE</div>
 
+  <!-- Near-fall status strip -->
+  <div class="nearfall-strip" id="nearfallStrip">
+    <span class="nearfall-icon">⚡</span>
+    <span id="nearfallStatus">Near-falls: 0 total</span>
+  </div>
+
   <!-- Status + SMS strips -->
   <div class="status-strip"><span id="statusLog">Waiting for connection...</span></div>
   <div class="sms-strip" id="smsStrip"><span id="smsText">SMS idle</span></div>
@@ -360,7 +393,30 @@ canvas { display: block; width: 100% !important; height: 110px !important; }
     <canvas id="chart"></canvas>
   </div>
 
-  <!-- Thresholds -->
+  <!-- Gait metrics — informational display only -->
+  <div class="sec-lbl">GAIT METRICS — updated every 1s</div>
+  <div class="gait-card">
+    <div class="gm-row">
+      <span class="gm-lbl">Cadence (steps/min)</span>
+      <span class="gm-val" id="gCadence">—</span>
+    </div>
+    <div class="gm-row">
+      <span class="gm-lbl">Step variability (CoV %)</span>
+      <span class="gm-val" id="gCov">—</span>
+    </div>
+    <div class="gm-row">
+      <span class="gm-lbl">Trunk sway RMS (m/s²)</span>
+      <span class="gm-val" id="gSway">—</span>
+    </div>
+    <div class="gm-row">
+      <span class="gm-lbl">Mediolateral sway (m/s²)</span>
+      <span class="gm-val" id="gMl">—</span>
+    </div>
+    <div class="gm-row" style="border-bottom:none;">
+      <span class="gm-lbl">Steps detected (5s window)</span>
+      <span class="gm-val" id="gSteps">—</span>
+    </div>
+  </div>
   <div class="sec-lbl">DETECTION THRESHOLDS</div>
   <div class="thresh-wrap">
     <div class="thresh-section">FALL DETECTION</div>
@@ -375,6 +431,18 @@ canvas { display: block; width: 100% !important; height: 110px !important; }
   <!-- Cancel alert -->
   <div class="sec-lbl">ALERT CONTROL</div>
   <button class="cancel-btn" onclick="sendCancel()">⚠ &nbsp; CANCEL FALSE DETECTION</button>
+
+  <!-- Near-fall log -->
+  <div class="sec-lbl">NEAR-FALL LOG</div>
+  <div class="log-wrap">
+    <div class="log-hdr">
+      <span class="log-title">NEAR-FALL EVENTS <span id="nfBadge" style="display:none;background:var(--red);color:#fff;font-size:10px;padding:2px 7px;border-radius:100px;margin-left:6px;">0</span></span>
+      <span class="log-clear" onclick="clearNearfallLog()">CLEAR</span>
+    </div>
+    <div class="log-entries" id="nfEntries">
+      <div class="log-empty">No near-fall events.</div>
+    </div>
+  </div>
 
   <!-- Fall log -->
   <div class="sec-lbl">FALL EVENT LOG</div>
@@ -419,7 +487,8 @@ let notifyChar     = null;
 let writeChar      = null;
 let isConnected    = false;
 let fallLog        = [];
-let chunkBuffer    = '';   // for chunked BLE packets
+let nearfallLog    = [];
+let chunkBuffer    = '';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  CHART
@@ -579,6 +648,45 @@ function handlePacket(raw){
     updateStateBanner(d.state);
   }
 
+  // ── Gait metrics (every 1s during IDLE) ───────────────────────────────────
+  if(d.type === 'gait'){
+    // Cadence — show — when no steps detected
+    const cadEl = el('gCadence');
+    if(d.cadence > 0){
+      cadEl.textContent = d.cadence.toFixed(1);
+    } else {
+      cadEl.textContent = '—';
+    }
+    // CoV — show — when no steps detected
+    const covEl = el('gCov');
+    if(d.cadence > 0 && d.cov >= 0){
+      covEl.textContent = d.cov.toFixed(1);
+    } else {
+      covEl.textContent = '—';
+    }
+    // Sway — always update
+    el('gSway').textContent = d.sway  !== undefined ? d.sway.toFixed(2) : '—';
+    el('gMl').textContent   = d.ml    !== undefined ? d.ml.toFixed(2)   : '—';
+    el('gSteps').textContent = d.steps > 0 ? d.steps : '—';
+  }
+
+  // ── Near-fall event ───────────────────────────────────────────────────────
+  if(d.type === 'nearfall'){
+    const entry = {
+      time:     new Date().toLocaleTimeString(),
+      dipMin:   d.dipMin.toFixed(2),
+      recovery: d.recovery.toFixed(2),
+      total:    d.total
+    };
+    nearfallLog.unshift(entry);
+    renderNearfallLog();
+    el('nearfallStatus').textContent = `Near-falls: ${d.total} total`;
+    const badge = el('nfBadge');
+    badge.textContent = nearfallLog.length;
+    badge.style.display = nearfallLog.length > 0 ? 'inline' : 'none';
+    log('Near-fall #' + d.total + ' detected — double beep');
+  }
+
   // ── Fall event ────────────────────────────────────────────────────────────
   if(d.type === 'fall'){
     const entry = {
@@ -591,7 +699,6 @@ function handlePacket(raw){
     };
     fallLog.unshift(entry);
     renderLog();
-    // Trigger SMS with full details
     sendFallSMS(d);
   }
 
@@ -609,6 +716,58 @@ function handlePacket(raw){
     set('t_pf',  'v_pf',  d.pf);
     drawChart();
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  NEAR-FALL SMS
+// ═══════════════════════════════════════════════════════════════════════════════
+async function sendNearfallSMS(count, total){
+  smsLog('sending', 'Getting location for near-fall alert...');
+  try {
+    const { lat, lng, acc } = await getCoords();
+    const now = new Date();
+    const ts  = now.toLocaleTimeString('en-AU', {hour:'2-digit', minute:'2-digit'});
+    const dt  = `${now.getDate()}/${now.getMonth()+1}`;
+
+    const body =
+      `NEAR-FALL ALERT ${dt} ${ts} — ${count} near-falls in 60 min ` +
+      `maps.google.com/?q=${lat.toFixed(4)},${lng.toFixed(4)}`;
+
+    const res = await fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: ALERT_TO, body })
+    });
+    if(!res.ok) throw new Error('Worker error: ' + res.status);
+    smsLog('sent', `Near-fall SMS sent · ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+  } catch(err){
+    smsLog('error', 'Near-fall SMS failed: ' + err.message);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  NEAR-FALL LOG
+// ═══════════════════════════════════════════════════════════════════════════════
+//  NEAR-FALL LOG
+// ═══════════════════════════════════════════════════════════════════════════════
+function renderNearfallLog(){
+  const e = el('nfEntries');
+  if(nearfallLog.length === 0){
+    e.innerHTML = '<div class="log-empty">No near-fall events.</div>';
+    return;
+  }
+  e.innerHTML = nearfallLog.map(f => `
+    <div class="log-entry">
+      <span class="le-time">${f.time}</span>
+      <span style="color:var(--orange);font-weight:700">NEAR-FALL #${f.total}</span>
+      <span class="le-detail">Dip: ${f.dipMin} m/s² &nbsp; Recovery: ${f.recovery} m/s²</span>
+    </div>`).join('');
+}
+
+function clearNearfallLog(){
+  nearfallLog = [];
+  renderNearfallLog();
+  el('nfBadge').style.display = 'none';
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
